@@ -22,7 +22,7 @@ class User(Base):
 
     # back_populates='author' means it links to the author field of a Post
     # we refrence Post before it is actually defined, it is called forward refrence, annotation import makes it work?
-    posts: Mapped[list[Post]] = relationship(back_populates='author')
+    posts: Mapped[list[Post]] = relationship(back_populates='author', cascade='all, delete-orphan')  # when a user is deleted, all their posts will be deleted as well, and if a post is removed from the user's posts list, it will be deleted from the database as well
 
     @property
     def image_path(self) -> str:
