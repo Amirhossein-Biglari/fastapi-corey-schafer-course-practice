@@ -255,8 +255,8 @@ async def update_post_full(post_id: int, post_data: PostCreate, db: Annotated[As
 
 
 @app.patch("/api/posts/{post_id}", response_model=PostResponse)
-def update_post_partial(post_id: int, post_data: PostUpdate, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+async def update_post_partial(post_id: int, post_data: PostUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
     post = result.scalars().first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
@@ -265,8 +265,8 @@ def update_post_partial(post_id: int, post_data: PostUpdate, db: Annotated[Sessi
     for field, value in update_data.items():
         setattr(post, field, value)
 
-    db.commit()
-    db.refresh(post)
+    await db.commit()
+    await db.refresh(post)
     return post
 
 
@@ -312,6 +312,7 @@ validation errors don't have a simple detail string, they have a list of detaile
 async def validation_exception_handler(request: Request, exception: RequestValidationError):
     if request.url.path.startswith("/api"):
         return await request_validation_exception_handler(request, exception)
+
     return templates.TemplateResponse(
         request,
         "error.html",
