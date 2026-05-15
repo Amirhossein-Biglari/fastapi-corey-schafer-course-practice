@@ -1,16 +1,22 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+import models
 from config import settings
+from database import get_db
 
 # creates a password hasher using argon2 with the recommended settings
 password_hash = PasswordHash.recommended()
 
 # This tokenurl has to mathc our login endpoint path
-# OAuth2PasswordBearer extracts the token from the authorization header, when a client sends that, the schema extracts 
+# OAuth2PasswordBearer extracts the token from the authorization header, when a client sends that, the schema extracts
 # that token for it.
 # Side effect? this enables the authorize button in our docs, which makes testing authentication a lot easier.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/token")
@@ -22,6 +28,7 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
+
 
 # Question: why hashing instead of encryption?
 # Answer: encryption is reversable but hashing is not, even if database is stolen, passwords can't be recovered from hashes.
@@ -37,7 +44,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         expire = datetime.now(UTC) + timedelta(
             minutes=settings.access_token_expire_minutes
         )
-    to_encode.update({'exp': expire})
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
         to_encode,
         settings.secret_key.get_secret_value(),
@@ -53,15 +60,50 @@ def verify_access_token(token: str) -> str | None:
             token,
             settings.secret_key.get_secret_value(),
             algorithms=[settings.algorithm],
-            options={'require': ['exp', 'sub']},
+            options={"require": ["exp", "sub"]},
         )
     except jwt.InvalidTokenError:
         return None
     else:
-        return payload.get('sub')
-    
+        return payload.get("sub")
+
 
 # JWT structure:
 # header: contains the algorithm and type
 # payload: contains our data + expiration
-# signature: proves the toke wasn't (tampored with)?? 
+# signature: proves the toke wasn't (tampored with)??
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> models.User:
+    user_id = verify_access_token(token)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    result = await db.execute(select(models.User).where(models.User.id == user_id_int))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+CurrentUser = Annotated[models.User, Depends(get_current_user)]

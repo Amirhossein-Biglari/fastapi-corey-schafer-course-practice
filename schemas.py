@@ -35,7 +35,7 @@ class UserPrivate(UserPublic):
 class Token(BaseModel):
     access_token: str
     token_type: str
-    
+
 
 class PostBase(BaseModel):
     title: str = Field(min_length=1, max_length=100)
@@ -43,7 +43,7 @@ class PostBase(BaseModel):
 
 
 class PostCreate(PostBase):
-    user_id: int  # TEMPORARY
+    pass
 
 
 class PostUpdate(BaseModel):
@@ -58,4 +58,3 @@ class PostResponse(PostBase):
     user_id: int
     date_posted: datetime
     author: UserPublic
-
