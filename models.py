@@ -25,6 +25,11 @@ class User(Base):
     # we refrence Post before it is actually defined, it is called forward refrence, annotation import makes it work?
     posts: Mapped[list[Post]] = relationship(back_populates='author', cascade='all, delete-orphan')  # when a user is deleted, all their posts will be deleted as well, and if a post is removed from the user's posts list, it will be deleted from the database as well
 
+    reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
     @property
     def image_path(self) -> str:
         if self.image_file:
@@ -49,3 +54,21 @@ class Post(Base):
     )
 
     author: Mapped[User] = relationship(back_populates='posts')
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC)
+    )
+
+    user: Mapped[User] = relationship(back_populates="reset_tokens")
