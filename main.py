@@ -20,7 +20,7 @@ from starlette.exceptions import (
 
 import models
 from config import settings
-from database import Base, engine, get_db
+from database import engine, get_db
 from routers import posts, users
 
 
@@ -28,9 +28,6 @@ from routers import posts, users
 # control back to FastAPI after doing the startup tasks, and then continues to do the shutdown tasks when the application is shutting down.
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
     # Shutdown
     await engine.dispose()

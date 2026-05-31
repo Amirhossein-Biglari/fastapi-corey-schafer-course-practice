@@ -1,13 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-# when we switch to postgres, changing this should be one of the changes that we need to make and the rest of the code stays the same
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./blog.db"
+from config import settings
 
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={'check_same_thread': False},  # sqlite only allows one thread, fastapi handles multiple requests, so we disable that restriction
-)
+engine = create_async_engine(settings.database_url)
 
 # a session is a transaction with database, each requests gets its own session
 AsyncSessionLocal = async_sessionmaker(
