@@ -31,6 +31,17 @@ pytest_plugins = [
 ]  # let us write async test functions, gives us pytest anyio decorator
 
 
-@pytest.fixture(scope="session")  # runs once for the entire test session rather than once per test
+@pytest.fixture(
+    scope="session"
+)  # runs once for the entire test session rather than once per test
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.fixture(scope="session")
+def test_engine():
+    engine = create_async_engine(
+        os.environ["DATABASE_URL"],
+        poolclass=NullPool,
+    )
+    return engine
